@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  agent-waf:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - MONGO_URL=mongodb://mongo:27017
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

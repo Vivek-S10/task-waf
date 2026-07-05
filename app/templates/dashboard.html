@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent WAF Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --card-bg: #161b22;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --border-color: #30363d;
+            --accent: #58a6ff;
+            --success: #2ea043;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 700px;
+        }
+
+        select, input[type="text"] {
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        select:focus, input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--success);
+            background: rgba(46, 160, 67, 0.1);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.7);
+            animation: pulse-animation 2s infinite;
+        }
+        
+        .pulse.paused {
+            animation: none;
+            background-color: var(--text-secondary);
+        }
+
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 160, 67, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 160, 67, 0); }
+        }
+
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.03);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 16px 20px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tr {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Status & Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-allow { background-color: rgba(46, 160, 67, 0.15); color: var(--success); border: 1px solid rgba(46,160,67,0.3); }
+        .badge-warn { background-color: rgba(210, 153, 34, 0.15); color: var(--warning); border: 1px solid rgba(210,153,34,0.3); }
+        .badge-block { background-color: rgba(248, 81, 73, 0.15); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+        
+        .badge-stateful { background-color: rgba(88, 166, 255, 0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+        .badge-stateless { background-color: rgba(139, 148, 158, 0.15); color: var(--text-secondary); border: 1px solid rgba(139,148,158,0.3); }
+
+        .time-col { color: var(--text-secondary); font-size: 13px; }
+        .tool-name { font-family: monospace; font-size: 14px; color: var(--accent); background: rgba(88, 166, 255, 0.1); padding: 2px 6px; border-radius: 4px; }
+        .reason-col { color: var(--text-secondary); max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .shadow-col { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 0 10px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: var(--text-secondary);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-indicator {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+            transform: translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover { color: #fff; }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .json-block {
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #e6edf3;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        
+        .modal-section {
+            margin-bottom: 20px;
+        }
+        
+        .modal-section h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Agent WAF <span style="color: var(--text-secondary); font-weight: 400;">| Edge Security Dashboard</span></h1>
+            <div class="controls">
+                <input type="text" id="filterTool" placeholder="Filter by Tool Name..." onkeyup="debounceFilter()" style="width: 180px;">
+                <select id="filterTime" onchange="changeFilter()">
+                    <option value="all">All Time</option>
+                    <option value="5m">Last 5 Mins</option>
+                    <option value="1h">Last 1 Hour</option>
+                    <option value="24h">Last 24 Hours</option>
+                </select>
+                <select id="filterDisposition" onchange="changeFilter()">
+                    <option value="all">All Actions</option>
+                    <option value="allowed">Allowed Only</option>
+                    <option value="blocked">Blocked Only</option>
+                </select>
+                <select id="filterShadow" onchange="changeFilter()">
+                    <option value="all">All Shadow Flags</option>
+                    <option value="has_warnings">Has Warnings</option>
+                    <option value="no_warnings">No Warnings</option>
+                </select>
+                <button onclick="resetFilters()" style="padding: 6px 12px; border-radius: 6px; background: var(--border-color); color: var(--text-primary); border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 14px;">Reset</button>
+                <div class="live-indicator" id="liveIndicator">
+                    <div class="pulse" id="pulseDot"></div>
+                    <span id="liveText">LIVE FEED</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Tracker</th>
+                        <th>Tool Call</th>
+                        <th>Action</th>
+                        <th>Semantics</th>
+                        <th>Details</th>
+                        <th>Shadow Flags</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody">
+                    <!-- Logs populated via JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="pagination">
+            <button onclick="changePage(-1)" id="prevBtn">Previous</button>
+            <span class="page-indicator" id="pageIndicator">Page 1</span>
+            <button onclick="changePage(1)" id="nextBtn">Next</button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="payloadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><span id="modalToolBadge" class="tool-name"></span> Request Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h3>Payload Parameters</h3>
+                    <div class="json-block" id="modalPayload"></div>
+                </div>
+                <div class="modal-section">
+                    <h3>Agent Scope Context</h3>
+                    <div class="json-block" style="white-space: normal;" id="modalScope"></div>
+                </div>
+                <div class="modal-section" id="modalRuleSection">
+                    <h3>Rule Evaluation</h3>
+                    <div class="json-block" id="modalEvaluation"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let logsData = [];
+        let currentPage = 1;
+        const limit = 10;
+        let totalLogs = 0;
+        
+        let filterDisposition = 'all';
+        let filterTime = 'all';
+        let filterShadow = 'all';
+        let filterTool = '';
+        let debounceTimer;
+
+        async function fetchLogs() {
+            try {
+                const skip = (currentPage - 1) * limit;
+                const url = `/api/v1/logs?limit=${limit}&skip=${skip}&filter_disposition=${filterDisposition}&filter_time=${filterTime}&filter_shadow=${filterShadow}&filter_tool=${encodeURIComponent(filterTool)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Routes.py returns {"logs": [...], "total": int}
+                logsData = data.logs; 
+                totalLogs = data.total;
+                
+                const tableBody = document.getElementById('logTableBody');
+                tableBody.innerHTML = '';
+                
+                if (logsData.length === 0) {
+                     tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 40px;">No logs found</td></tr>';
+                }
+                
+                logsData.forEach((log, index) => {
+                    const row = document.createElement('tr');
+                    row.onclick = () => openModal(index);
+                    
+                    const time = new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                    
+                    let actionBadge = '';
+                    if (log.final_disposition === 'blocked') actionBadge = '<span class="badge badge-block">BLOCKED</span>';
+                    else actionBadge = '<span class="badge badge-allow">ALLOWED</span>';
+
+                    const shadowViolationsRaw = log.rule_evaluation.shadow_violations && log.rule_evaluation.shadow_violations.length > 0 
+                        ? log.rule_evaluation.shadow_violations.join(', ') 
+                        : '';
+                    const shadowViolationsDisplay = shadowViolationsRaw !== '' ? shadowViolationsRaw : '<span style="color: var(--text-secondary)">-</span>';
+                    
+                    const modeBadge = log.mode === 'Stateful' 
+                        ? `<span class="badge badge-stateful">Stateful</span>` 
+                        : `<span class="badge badge-stateless">Stateless</span>`;
+                        
+                    const tracker = log.mode === 'Stateful' ? log.agent_id : log.client_ip;
+                    
+                    let semanticDisplay = '<span style="color: var(--text-secondary)">N/A</span>';
+                    if (log.semantic_score !== null && log.semantic_score !== undefined) {
+                        const scoreStr = log.semantic_score.toFixed(2);
+                        let badgeClass = '';
+                        if (log.semantic_zone === 'allow') badgeClass = 'badge-allow';
+                        else if (log.semantic_zone === 'warn') badgeClass = 'badge-warn';
+                        else if (log.semantic_zone === 'block') badgeClass = 'badge-block';
+                        semanticDisplay = `<span class="badge ${badgeClass}">${scoreStr}</span>`;
+                    }
+                    
+                    row.innerHTML = `
+                        <td class="time-col">${time}</td>
+                        <td>${tracker || 'N/A'} <div style="margin-top: 4px;">${modeBadge}</div></td>
+                        <td><span class="tool-name">${log.tool_name}</span></td>
+                        <td>${actionBadge}</td>
+                        <td>${semanticDisplay}</td>
+                        <td class="reason-col" title="${log.rule_evaluation.reason || 'No violation'}">${log.rule_evaluation.reason || '-'}</td>
+                        <td class="shadow-col" title="${shadowViolationsRaw || 'No warnings'}">${shadowViolationsDisplay}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                updatePagination();
+            } catch (error) {
+                console.error("Failed to fetch logs:", error);
+            }
+        }
+        
+        function updatePagination() {
+            const maxPage = Math.ceil(totalLogs / limit) || 1;
+            document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${maxPage} (Total: ${totalLogs})`;
+            
+            document.getElementById('prevBtn').disabled = currentPage <= 1;
+            document.getElementById('nextBtn').disabled = currentPage >= maxPage;
+            
+            // UI feedback for "LIVE" vs "HISTORY"
+            const liveText = document.getElementById('liveText');
+            const pulseDot = document.getElementById('pulseDot');
+            
+            if (currentPage === 1 && filterDisposition === 'all' && filterTime === 'all' && filterShadow === 'all' && filterTool === '') {
+                liveText.textContent = "LIVE FEED";
+                pulseDot.classList.remove('paused');
+            } else {
+                liveText.textContent = "HISTORY / FILTERED";
+                pulseDot.classList.add('paused');
+            }
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            fetchLogs();
+        }
+
+        function debounceFilter() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(changeFilter, 400);
+        }
+
+        function changeFilter() {
+            filterDisposition = document.getElementById('filterDisposition').value;
+            filterTime = document.getElementById('filterTime').value;
+            filterShadow = document.getElementById('filterShadow').value;
+            filterTool = document.getElementById('filterTool').value;
+            currentPage = 1;
+            fetchLogs();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterDisposition').value = 'all';
+            document.getElementById('filterTime').value = 'all';
+            document.getElementById('filterShadow').value = 'all';
+            document.getElementById('filterTool').value = '';
+            changeFilter();
+        }
+
+        function openModal(index) {
+            const log = logsData[index];
+            if (!log) return;
+
+            document.getElementById('modalToolBadge').textContent = log.tool_name;
+            document.getElementById('modalPayload').textContent = JSON.stringify(log.parameters, null, 2) || "No parameters";
+            document.getElementById('modalScope').textContent = log.agent_scope || "No Scope Provided (Stateless/Global)";
+            document.getElementById('modalEvaluation').textContent = JSON.stringify(log.rule_evaluation, null, 2);
+            
+            const overlay = document.getElementById('payloadModal');
+            overlay.style.display = 'flex';
+            setTimeout(() => {
+                overlay.classList.add('active');
+            }, 10);
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('payloadModal');
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 200); 
+        }
+
+        document.getElementById('payloadModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        fetchLogs();
+        
+        // Auto-refresh only if on page 1
+        setInterval(() => {
+            if (currentPage === 1) {
+                fetchLogs();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  agent-waf:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: agent-waf:production
+    ports:
+      - "80:8000"
+    environment:
+      - ENVIRONMENT=production
+      - MONGO_URL=mongodb://mongo:27017
+    # No volume mapping for code. Container runs completely from image layer.
+    depends_on:
+      - mongo
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data_prod:/data/db
+    restart: always
+    # Restrict WiredTiger cache to 0.5GB to ensure plenty of RAM is left for FastEmbed ONNX runtime on the t3.small
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mongo_data_prod:
