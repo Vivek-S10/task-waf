@@ -36,6 +36,13 @@ app = FastAPI(
 
 app.include_router(api_router, prefix="/api/v1")
 
+from fastapi.responses import RedirectResponse
+
+@app.get("/")
+async def root():
+    """Redirect root to the dashboard."""
+    return RedirectResponse(url="/dashboard")
+
 @app.get("/health")
 async def health_check():
     """Basic health check endpoint."""

@@ -44,6 +44,7 @@ The entire stack is containerized via Docker.
    git clone <repo-url>
    cd Agent-WAF
    ```
+Add .env with groq-api-key and add a groq api key
 
 2. **Spin up the stack**:
    ```bash
